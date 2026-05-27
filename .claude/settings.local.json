@@ -8,7 +8,11 @@
       "Bash(mkdir -p \"c:\\\\Users\\\\agiff\\\\Documents\\\\GoLang\\\\discord-festival-bot\\\\discord-festival-bot\\\\internal\\\\config\")",
       "Bash(mkdir -p \"c:\\\\Users\\\\agiff\\\\Documents\\\\GoLang\\\\discord-festival-bot\\\\discord-festival-bot\\\\internal\\\\bot\")",
       "Bash(mkdir -p \"c:\\\\Users\\\\agiff\\\\Documents\\\\GoLang\\\\discord-festival-bot\\\\discord-festival-bot\\\\internal\\\\handlers\")",
-      "Bash(go build *)"
+      "Bash(go build *)",
+      "Bash(mkdir -p \"c:\\\\Users\\\\agiff\\\\Documents\\\\GoLang\\\\discord-festival-bot\\\\discord-festival-bot\\\\.github\\\\workflows\")"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\agiff\\Documents\\GoLang\\discord-festival-bot\\discord-festival-bot\\.github"
     ]
   }
 }
