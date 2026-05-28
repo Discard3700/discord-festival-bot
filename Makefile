@@ -1,4 +1,4 @@
-.PHONY: run build tidy test test-integration docker-up docker-down logs docker-run
+.PHONY: run build tidy test test-integration import docker-up docker-down logs docker-run
 
 IMAGE ?= $(DOCKERHUB_USERNAME)/discord-festival-bot:latest
 
@@ -17,6 +17,10 @@ test:
 # Requires TEST_DATABASE_URL=postgresql://... to be set
 test-integration:
 	go test -tags integration ./...
+
+# Usage: make import FILE=lineup.json
+import:
+	go run ./cmd/import $(FILE)
 
 # Local dev only — builds from source
 docker-up:

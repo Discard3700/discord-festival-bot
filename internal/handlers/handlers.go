@@ -10,11 +10,13 @@ import (
 type handler func(s *discordgo.Session, i *discordgo.InteractionCreate, pool *pgxpool.Pool)
 
 var registry = map[string]handler{
-	"ping": pingHandler,
+	"ping":   pingHandler,
+	"lineup": lineupHandler,
 }
 
 var commandDefs = []*discordgo.ApplicationCommand{
 	pingCommand,
+	lineupCommand,
 }
 
 func Commands() []*discordgo.ApplicationCommand {

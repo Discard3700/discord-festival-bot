@@ -23,6 +23,7 @@ func New(cfg *config.Config, pool *pgxpool.Pool) (*Bot, error) {
 	if err != nil {
 		return nil, fmt.Errorf("create session: %w", err)
 	}
+	handlers.SetFestivalLoc(cfg.FestivalTZ)
 	return &Bot{session: s, cfg: cfg, pool: pool}, nil
 }
 
