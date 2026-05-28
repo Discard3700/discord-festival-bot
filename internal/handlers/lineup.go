@@ -58,6 +58,12 @@ var lineupCommand = &discordgo.ApplicationCommand{
 		},
 		{
 			Type:        discordgo.ApplicationCommandOptionSubCommand,
+			Name:        "schedule",
+			Description: "Full schedule for a festival, grouped by day",
+			Options:     []*discordgo.ApplicationCommandOption{festivalOption},
+		},
+		{
+			Type:        discordgo.ApplicationCommandOptionSubCommand,
 			Name:        "artist",
 			Description: "Look up a specific artist's set time",
 			Options: []*discordgo.ApplicationCommandOption{
@@ -82,6 +88,8 @@ func lineupHandler(s *discordgo.Session, i *discordgo.InteractionCreate, pool *p
 		lineupNext(s, i, pool, sub.Options)
 	case "day":
 		lineupDay(s, i, pool, sub.Options)
+	case "schedule":
+		lineupSchedule(s, i, pool, sub.Options)
 	case "artist":
 		lineupArtist(s, i, pool, sub.Options)
 	default:
@@ -226,6 +234,80 @@ func lineupArtist(s *discordgo.Session, i *discordgo.InteractionCreate, pool *pg
 				a.StartsAt.In(loc).Format("Monday"),
 			)
 		}),
+	})
+}
+
+func lineupSchedule(s *discordgo.Session, i *discordgo.InteractionCreate, pool *pgxpool.Pool, opts []*discordgo.ApplicationCommandInteractionDataOption) {
+	fest, err := resolveFestival(pool, opts)
+	if err != nil {
+		respond(s, i, fmt.Sprintf("❌ %v", err))
+		return
+	}
+
+	artists, err := lineup.AllArtists(context.Background(), pool, fest.ID)
+	if err != nil {
+		log.Printf("lineup schedule: %v", err)
+		respond(s, i, "Failed to fetch lineup.")
+		return
+	}
+	if len(artists) == 0 {
+		respond(s, i, fmt.Sprintf("No sets found for **%s**. Import a lineup first.", fest.Name))
+		return
+	}
+
+	loc := festivalLoc(pool)
+
+	type dayGroup struct {
+		label   string
+		artists []lineup.Artist
+	}
+	var days []dayGroup
+	seen := map[string]int{}
+	for _, a := range artists {
+		label := a.StartsAt.In(loc).Format("Monday, Jan 2")
+		if idx, ok := seen[label]; ok {
+			days[idx].artists = append(days[idx].artists, a)
+		} else {
+			seen[label] = len(days)
+			days = append(days, dayGroup{label: label, artists: []lineup.Artist{a}})
+		}
+	}
+
+	const maxFieldLen = 1000
+	fields := make([]*discordgo.MessageEmbedField, 0, len(days))
+	for _, day := range days {
+		stageOrder := []string{}
+		stageGroups := map[string][]lineup.Artist{}
+		for _, a := range day.artists {
+			if _, ok := stageGroups[a.Stage]; !ok {
+				stageOrder = append(stageOrder, a.Stage)
+			}
+			stageGroups[a.Stage] = append(stageGroups[a.Stage], a)
+		}
+
+		var sb strings.Builder
+		for _, stage := range stageOrder {
+			fmt.Fprintf(&sb, "**%s**\n", stage)
+			for _, a := range stageGroups[stage] {
+				line := fmt.Sprintf("• %s  %s–%s\n", a.Name, fmtTime(a.StartsAt, loc), fmtTime(a.EndsAt, loc))
+				if sb.Len()+len(line) > maxFieldLen {
+					sb.WriteString("• *…and more*\n")
+					goto nextDay
+				}
+				sb.WriteString(line)
+			}
+		}
+	nextDay:
+		fields = append(fields, &discordgo.MessageEmbedField{
+			Name:  day.label,
+			Value: sb.String(),
+		})
+	}
+
+	respondEmbed(s, i, &discordgo.MessageEmbed{
+		Title:  fmt.Sprintf("📋 Full Schedule — %s", fest.Name),
+		Color:  0x8B5CF6,
+		Fields: fields,
 	})
 }
 

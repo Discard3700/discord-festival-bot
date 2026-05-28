@@ -97,6 +97,19 @@ func scanArtist(row interface{ Scan(...any) error }) (Artist, error) {
 	return a, row.Scan(&a.ID, &a.FestivalID, &a.Name, &a.Stage, &a.StartsAt, &a.EndsAt)
 }
 
+// AllArtists returns every set for the given festival ordered by start time.
+func AllArtists(ctx context.Context, pool *pgxpool.Pool, festivalID int) ([]Artist, error) {
+	rows, err := pool.Query(ctx,
+		artistCols+` WHERE festival_id = $1 ORDER BY starts_at, stage`,
+		festivalID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("all artists: %w", err)
+	}
+	defer rows.Close()
+	return collectArtists(rows)
+}
+
 // NowPlaying returns sets currently in progress for the given festival.
 func NowPlaying(ctx context.Context, pool *pgxpool.Pool, festivalID int) ([]Artist, error) {
 	rows, err := pool.Query(ctx,
