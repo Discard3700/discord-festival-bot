@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 var pingCommand = &discordgo.ApplicationCommand{
@@ -11,7 +12,7 @@ var pingCommand = &discordgo.ApplicationCommand{
 	Description: "Check that the bot is alive",
 }
 
-func pingHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
+func pingHandler(s *discordgo.Session, i *discordgo.InteractionCreate, _ *pgxpool.Pool) {
 	err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{

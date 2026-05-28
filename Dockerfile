@@ -12,6 +12,7 @@ FROM scratch
 
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=builder /bot /bot
+COPY --from=builder /src/migrations /migrations
 
 USER 65534
 
