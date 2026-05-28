@@ -1,4 +1,4 @@
-.PHONY: run build tidy docker-up docker-down logs docker-run
+.PHONY: run build tidy test test-integration docker-up docker-down logs docker-run
 
 IMAGE ?= $(DOCKERHUB_USERNAME)/discord-festival-bot:latest
 
@@ -10,6 +10,13 @@ build:
 
 tidy:
 	go mod tidy
+
+test:
+	go test ./...
+
+# Requires TEST_DATABASE_URL=postgresql://... to be set
+test-integration:
+	go test -tags integration ./...
 
 # Local dev only — builds from source
 docker-up:
