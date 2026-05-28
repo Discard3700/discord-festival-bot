@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
 	"os/signal"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/Discard3700/discord-festival-bot/internal/bot"
 	"github.com/Discard3700/discord-festival-bot/internal/config"
+	"github.com/Discard3700/discord-festival-bot/internal/db"
 )
 
 func main() {
@@ -20,7 +22,18 @@ func main() {
 		log.Fatalf("config: %v", err)
 	}
 
-	b, err := bot.New(cfg)
+	if err := db.Migrate(cfg.DatabaseURL); err != nil {
+		log.Fatalf("migrate: %v", err)
+	}
+
+	ctx := context.Background()
+	pool, err := db.Connect(ctx, cfg.DatabaseURL)
+	if err != nil {
+		log.Fatalf("db: %v", err)
+	}
+	defer pool.Close()
+
+	b, err := bot.New(cfg, pool)
 	if err != nil {
 		log.Fatalf("bot: %v", err)
 	}
