@@ -7,10 +7,11 @@ import (
 )
 
 type Config struct {
-	DiscordToken string
-	GuildID      string
-	DatabaseURL  string
-	FestivalTZ   *time.Location
+	DiscordToken      string
+	GuildID           string
+	DatabaseURL       string
+	FestivalTZ        *time.Location
+	ReminderChannelID string // optional; falls back to command channel if empty
 }
 
 func Load() (*Config, error) {
@@ -34,9 +35,10 @@ func Load() (*Config, error) {
 	}
 
 	return &Config{
-		DiscordToken: token,
-		GuildID:      os.Getenv("GUILD_ID"),
-		DatabaseURL:  dbURL,
-		FestivalTZ:   loc,
+		DiscordToken:      token,
+		GuildID:           os.Getenv("GUILD_ID"),
+		DatabaseURL:       dbURL,
+		FestivalTZ:        loc,
+		ReminderChannelID: os.Getenv("REMINDER_CHANNEL_ID"),
 	}, nil
 }
