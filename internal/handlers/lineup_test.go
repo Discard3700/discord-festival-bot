@@ -19,7 +19,7 @@ func TestLineupCommandSubcommands(t *testing.T) {
 	var cmd *struct{ Options interface{} }
 	for _, c := range handlers.Commands() {
 		if c.Name == "lineup" {
-			want := []string{"now", "next", "day", "artist"}
+			want := []string{"now", "next", "day", "schedule", "artist"}
 			got := map[string]bool{}
 			for _, o := range c.Options {
 				got[o.Name] = true
