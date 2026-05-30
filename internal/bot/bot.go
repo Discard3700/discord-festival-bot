@@ -9,12 +9,14 @@ import (
 
 	"github.com/Discard3700/discord-festival-bot/internal/config"
 	"github.com/Discard3700/discord-festival-bot/internal/handlers"
+	"github.com/Discard3700/discord-festival-bot/internal/reminder"
 )
 
 type Bot struct {
 	session *discordgo.Session
 	cfg     *config.Config
 	pool    *pgxpool.Pool
+	poller  *reminder.Poller
 	cmds    []*discordgo.ApplicationCommand
 }
 
@@ -24,7 +26,13 @@ func New(cfg *config.Config, pool *pgxpool.Pool) (*Bot, error) {
 		return nil, fmt.Errorf("create session: %w", err)
 	}
 	handlers.SetFestivalLoc(cfg.FestivalTZ)
-	return &Bot{session: s, cfg: cfg, pool: pool}, nil
+	handlers.SetReminderChannelID(cfg.ReminderChannelID)
+	return &Bot{
+		session: s,
+		cfg:     cfg,
+		pool:    pool,
+		poller:  reminder.NewPoller(s, pool, cfg.FestivalTZ),
+	}, nil
 }
 
 func (b *Bot) Start() error {
@@ -44,10 +52,14 @@ func (b *Bot) Start() error {
 	}
 	b.cmds = registered
 	log.Printf("registered %d slash command(s)", len(b.cmds))
+
+	b.poller.Start()
+	log.Println("reminder poller started")
 	return nil
 }
 
 func (b *Bot) Stop() {
+	b.poller.Stop()
 	if _, err := b.session.ApplicationCommandBulkOverwrite(
 		b.session.State.User.ID,
 		b.cfg.GuildID,

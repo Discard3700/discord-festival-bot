@@ -12,11 +12,13 @@ type handler func(s *discordgo.Session, i *discordgo.InteractionCreate, pool *pg
 var registry = map[string]handler{
 	"ping":   pingHandler,
 	"lineup": lineupHandler,
+	"remind": remindHandler,
 }
 
 var commandDefs = []*discordgo.ApplicationCommand{
 	pingCommand,
 	lineupCommand,
+	remindCommand,
 }
 
 func Commands() []*discordgo.ApplicationCommand {
