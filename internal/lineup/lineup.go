@@ -38,13 +38,11 @@ var weekdays = map[string]time.Weekday{
 	"saturday": time.Saturday, "sat": time.Saturday,
 }
 
-// ParseWeekday converts a user-supplied string ("Friday", "fri") to time.Weekday.
 func ParseWeekday(s string) (time.Weekday, bool) {
 	d, ok := weekdays[strings.ToLower(strings.TrimSpace(s))]
 	return d, ok
 }
 
-// UpsertFestival inserts or updates a festival by slug and returns its ID.
 func UpsertFestival(ctx context.Context, pool *pgxpool.Pool, f Festival) (int, error) {
 	var id int
 	err := pool.QueryRow(ctx, `
@@ -58,8 +56,6 @@ func UpsertFestival(ctx context.Context, pool *pgxpool.Pool, f Festival) (int, e
 	return id, err
 }
 
-// DefaultFestival returns the currently active festival, then the next upcoming,
-// then the most recent past one. Returns an error if no festivals exist.
 func DefaultFestival(ctx context.Context, pool *pgxpool.Pool) (*Festival, error) {
 	for _, q := range []string{
 		`SELECT id, name, slug, starts_at, ends_at FROM festivals WHERE NOW() BETWEEN starts_at AND ends_at ORDER BY starts_at LIMIT 1`,
@@ -78,7 +74,6 @@ func DefaultFestival(ctx context.Context, pool *pgxpool.Pool) (*Festival, error)
 	return nil, fmt.Errorf("no festivals found — run 'make import' first")
 }
 
-// FestivalBySlug looks up a festival by its short slug.
 func FestivalBySlug(ctx context.Context, pool *pgxpool.Pool, slug string) (*Festival, error) {
 	var f Festival
 	err := pool.QueryRow(ctx,
@@ -92,17 +87,9 @@ func FestivalBySlug(ctx context.Context, pool *pgxpool.Pool, slug string) (*Fest
 
 const artistCols = `SELECT id, festival_id, name, stage, starts_at, ends_at FROM artists`
 
-func scanArtist(row interface{ Scan(...any) error }) (Artist, error) {
-	var a Artist
-	return a, row.Scan(&a.ID, &a.FestivalID, &a.Name, &a.Stage, &a.StartsAt, &a.EndsAt)
-}
-
-// AllArtists returns every set for the given festival ordered by start time.
 func AllArtists(ctx context.Context, pool *pgxpool.Pool, festivalID int) ([]Artist, error) {
 	rows, err := pool.Query(ctx,
-		artistCols+` WHERE festival_id = $1 ORDER BY starts_at, stage`,
-		festivalID,
-	)
+		artistCols+` WHERE festival_id = $1 ORDER BY starts_at, stage`, festivalID)
 	if err != nil {
 		return nil, fmt.Errorf("all artists: %w", err)
 	}
@@ -110,12 +97,10 @@ func AllArtists(ctx context.Context, pool *pgxpool.Pool, festivalID int) ([]Arti
 	return collectArtists(rows)
 }
 
-// NowPlaying returns sets currently in progress for the given festival.
 func NowPlaying(ctx context.Context, pool *pgxpool.Pool, festivalID int) ([]Artist, error) {
 	rows, err := pool.Query(ctx,
 		artistCols+` WHERE festival_id = $1 AND NOW() BETWEEN starts_at AND ends_at ORDER BY stage, starts_at`,
-		festivalID,
-	)
+		festivalID)
 	if err != nil {
 		return nil, fmt.Errorf("now playing: %w", err)
 	}
@@ -123,12 +108,10 @@ func NowPlaying(ctx context.Context, pool *pgxpool.Pool, festivalID int) ([]Arti
 	return collectArtists(rows)
 }
 
-// NextPlaying returns sets starting within the next hour for the given festival.
 func NextPlaying(ctx context.Context, pool *pgxpool.Pool, festivalID int) ([]Artist, error) {
 	rows, err := pool.Query(ctx,
 		artistCols+` WHERE festival_id = $1 AND starts_at > NOW() AND starts_at <= NOW() + INTERVAL '1 hour' ORDER BY starts_at, stage`,
-		festivalID,
-	)
+		festivalID)
 	if err != nil {
 		return nil, fmt.Errorf("next playing: %w", err)
 	}
@@ -136,23 +119,10 @@ func NextPlaying(ctx context.Context, pool *pgxpool.Pool, festivalID int) ([]Art
 	return collectArtists(rows)
 }
 
-// ByDay returns all sets on the given weekday (in loc) for the given festival.
 func ByDay(ctx context.Context, pool *pgxpool.Pool, festivalID int, day time.Weekday, stage string, loc *time.Location) ([]Artist, error) {
-	var (
-		rows pgx.Rows
-		err  error
-	)
-	if stage != "" {
-		rows, err = pool.Query(ctx,
-			artistCols+` WHERE festival_id = $1 AND stage ILIKE $2 ORDER BY starts_at`,
-			festivalID, stage,
-		)
-	} else {
-		rows, err = pool.Query(ctx,
-			artistCols+` WHERE festival_id = $1 ORDER BY stage, starts_at`,
-			festivalID,
-		)
-	}
+	rows, err := pool.Query(ctx,
+		artistCols+` WHERE festival_id = $1 AND ($2 = '' OR stage ILIKE $2) ORDER BY stage, starts_at`,
+		festivalID, stage)
 	if err != nil {
 		return nil, fmt.Errorf("by day: %w", err)
 	}
@@ -164,12 +134,10 @@ func ByDay(ctx context.Context, pool *pgxpool.Pool, festivalID int, day time.Wee
 	return filterDay(all, day, loc), nil
 }
 
-// ByArtist returns sets whose name contains the search string for the given festival.
 func ByArtist(ctx context.Context, pool *pgxpool.Pool, festivalID int, name string) ([]Artist, error) {
 	rows, err := pool.Query(ctx,
 		artistCols+` WHERE festival_id = $1 AND name ILIKE '%' || $2 || '%' ORDER BY starts_at`,
-		festivalID, name,
-	)
+		festivalID, name)
 	if err != nil {
 		return nil, fmt.Errorf("by artist: %w", err)
 	}
@@ -177,15 +145,13 @@ func ByArtist(ctx context.Context, pool *pgxpool.Pool, festivalID int, name stri
 	return collectArtists(rows)
 }
 
-// Upsert inserts or updates an artist by (festival_id, name, starts_at).
 func Upsert(ctx context.Context, pool *pgxpool.Pool, a Artist) error {
 	_, err := pool.Exec(ctx, `
 		INSERT INTO artists (festival_id, name, stage, starts_at, ends_at)
 		VALUES ($1, $2, $3, $4, $5)
 		ON CONFLICT (festival_id, name, starts_at) DO UPDATE
 		  SET stage = EXCLUDED.stage, ends_at = EXCLUDED.ends_at`,
-		a.FestivalID, a.Name, a.Stage, a.StartsAt, a.EndsAt,
-	)
+		a.FestivalID, a.Name, a.Stage, a.StartsAt, a.EndsAt)
 	return err
 }
 
@@ -202,8 +168,8 @@ func filterDay(artists []Artist, day time.Weekday, loc *time.Location) []Artist 
 func collectArtists(rows pgx.Rows) ([]Artist, error) {
 	var artists []Artist
 	for rows.Next() {
-		a, err := scanArtist(rows)
-		if err != nil {
+		var a Artist
+		if err := rows.Scan(&a.ID, &a.FestivalID, &a.Name, &a.Stage, &a.StartsAt, &a.EndsAt); err != nil {
 			return nil, fmt.Errorf("scan artist: %w", err)
 		}
 		artists = append(artists, a)

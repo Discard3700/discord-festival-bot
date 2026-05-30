@@ -111,7 +111,7 @@ func remindAdd(s *discordgo.Session, i *discordgo.InteractionCreate, pool *pgxpo
 		return
 	}
 
-	loc := festivalLoc(pool)
+	loc := festivalLoc()
 	ch := reminderChannel(i)
 	ctx := context.Background()
 
@@ -160,7 +160,7 @@ func remindList(s *discordgo.Session, i *discordgo.InteractionCreate, pool *pgxp
 		return
 	}
 
-	loc := festivalLoc(pool)
+	loc := festivalLoc()
 	var sb strings.Builder
 	for _, r := range pending {
 		fmt.Fprintf(&sb, "🔔 **%s** — %s at %s *(reminder at %s)*\n",

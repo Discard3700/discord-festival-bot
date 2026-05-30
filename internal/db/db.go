@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/pgx/v5"
@@ -23,7 +24,10 @@ func Connect(ctx context.Context, url string) (*pgxpool.Pool, error) {
 }
 
 func Migrate(databaseURL string) error {
-	m, err := migrate.New("file://migrations", "pgx5://"+databaseURL[len("postgresql://"):])
+	// golang-migrate's pgx5 driver requires the pgx5:// scheme.
+	// Strip either postgresql:// or postgres:// before prepending it.
+	bare := strings.TrimPrefix(strings.TrimPrefix(databaseURL, "postgresql://"), "postgres://")
+	m, err := migrate.New("file://migrations", "pgx5://"+bare)
 	if err != nil {
 		return fmt.Errorf("migrate init: %w", err)
 	}
