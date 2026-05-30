@@ -122,7 +122,7 @@ func lineupNow(s *discordgo.Session, i *discordgo.InteractionCreate, pool *pgxpo
 		respond(s, i, fmt.Sprintf("Nothing is playing right now at **%s**.", fest.Name))
 		return
 	}
-	loc := festivalLoc(pool)
+	loc := festivalLoc()
 	respondEmbed(s, i, &discordgo.MessageEmbed{
 		Title: fmt.Sprintf("🎵 Now Playing — %s", fest.Name),
 		Color: 0x1DB954,
@@ -148,7 +148,7 @@ func lineupNext(s *discordgo.Session, i *discordgo.InteractionCreate, pool *pgxp
 		respond(s, i, fmt.Sprintf("Nothing starting in the next hour at **%s**.", fest.Name))
 		return
 	}
-	loc := festivalLoc(pool)
+	loc := festivalLoc()
 	respondEmbed(s, i, &discordgo.MessageEmbed{
 		Title: fmt.Sprintf("⏭️ Up Next — %s", fest.Name),
 		Color: 0xF59E0B,
@@ -174,7 +174,7 @@ func lineupDay(s *discordgo.Session, i *discordgo.InteractionCreate, pool *pgxpo
 		return
 	}
 
-	loc := festivalLoc(pool)
+	loc := festivalLoc()
 	artists, err := lineup.ByDay(context.Background(), pool, fest.ID, day, stage, loc)
 	if err != nil {
 		log.Printf("lineup day: %v", err)
@@ -223,7 +223,7 @@ func lineupArtist(s *discordgo.Session, i *discordgo.InteractionCreate, pool *pg
 		return
 	}
 
-	loc := festivalLoc(pool)
+	loc := festivalLoc()
 	respondEmbed(s, i, &discordgo.MessageEmbed{
 		Title: fmt.Sprintf("🎤 Artist Search — %s", fest.Name),
 		Color: 0xEC4899,
@@ -255,7 +255,7 @@ func lineupSchedule(s *discordgo.Session, i *discordgo.InteractionCreate, pool *
 		return
 	}
 
-	loc := festivalLoc(pool)
+	loc := festivalLoc()
 
 	type dayGroup struct {
 		label   string
@@ -286,18 +286,18 @@ func lineupSchedule(s *discordgo.Session, i *discordgo.InteractionCreate, pool *
 		}
 
 		var sb strings.Builder
+	outer:
 		for _, stage := range stageOrder {
 			fmt.Fprintf(&sb, "**%s**\n", stage)
 			for _, a := range stageGroups[stage] {
 				line := fmt.Sprintf("• %s  %s–%s\n", a.Name, fmtTime(a.StartsAt, loc), fmtTime(a.EndsAt, loc))
 				if sb.Len()+len(line) > maxFieldLen {
 					sb.WriteString("• *…and more*\n")
-					goto nextDay
+					break outer
 				}
 				sb.WriteString(line)
 			}
 		}
-	nextDay:
 		fields = append(fields, &discordgo.MessageEmbedField{
 			Name:  day.label,
 			Value: sb.String(),
@@ -359,7 +359,7 @@ var globalLoc *time.Location
 
 func SetFestivalLoc(loc *time.Location) { globalLoc = loc }
 
-func festivalLoc(_ *pgxpool.Pool) *time.Location {
+func festivalLoc() *time.Location {
 	if globalLoc != nil {
 		return globalLoc
 	}

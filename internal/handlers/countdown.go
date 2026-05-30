@@ -23,7 +23,7 @@ func countdownHandler(s *discordgo.Session, i *discordgo.InteractionCreate, pool
 	}
 
 	now := time.Now()
-	loc := festivalLoc(pool)
+	loc := festivalLoc()
 
 	var title, desc string
 	var color int
